@@ -129,6 +129,35 @@ class MetaDataset(Dataset):
         with open(path, 'wb') as f:
             pickle.dump(self._bookkeeping, f, protocol=-1)
 
+    def load_candidates(self, adaptation_indices, evaluation_indices, adaptation_labels):
+        if isinstance(adaptation_indices, torch.Tensor):
+            adaptation_indices = adaptation_indices.detach().cpu().numpy()
+            adaptation_labels = adaptation_labels.detach().cpu().numpy()
+            evaluation_index_set = set(evaluation_indices.tolist())
+
+        # get unique labels
+        orig_labels = []
+        orig_to_task_label = {}
+        for index, task_label in zip(adaptation_indices, adaptation_labels):
+            orig_label = self.indices_to_labels[float(index)]
+            orig_labels.append(orig_label)
+            orig_to_task_label[orig_label] = task_label
+        unique_orig_labels = np.unique(orig_labels)
+
+        # get all valid indices and labels
+        all_valid_indices = []
+        all_valid_labels = []
+        for orig_label in unique_orig_labels:
+            all_indices = self.labels_to_indices[orig_label]
+            valid_indices = list(set(all_indices).difference(evaluation_index_set))
+            all_valid_indices += valid_indices
+
+            task_label = orig_to_task_label[orig_label]
+            all_valid_labels += [task_label] * len(valid_indices)
+
+        assert len(all_valid_indices) == len(all_valid_labels)
+        return np.array(all_valid_indices), np.array(all_valid_labels)
+
 
 class UnionMetaDataset(MetaDataset):
 

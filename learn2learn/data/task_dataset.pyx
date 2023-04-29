@@ -137,9 +137,11 @@ cdef class CythonTaskDataset:
         #  Given a task description, creates the corresponding batch of data.
         all_data = []
         for data_description in task_description:
+            index = data_description.index
             data = data_description.index
             for transform in data_description.transforms:
                 data = transform(data)
+            data.append(index)
             all_data.append(data)
         return self.task_collate(all_data)
 

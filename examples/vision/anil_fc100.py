@@ -32,7 +32,7 @@ def fast_adapt(batch,
                ways,
                device=None):
 
-    data, labels = batch
+    data, labels, _ = batch
     data, labels = data.to(device), labels.to(device)
     data = features(data)
 
@@ -77,13 +77,13 @@ def main(
         device = torch.device('cuda')
 
     # Create Datasets
-    train_dataset = l2l.vision.datasets.FC100(root='~/data',
+    train_dataset = l2l.vision.datasets.FC100(root='/home/whbae/active_meta/data',
                                               transform=tv.transforms.ToTensor(),
                                               mode='train')
-    valid_dataset = l2l.vision.datasets.FC100(root='~/data',
+    valid_dataset = l2l.vision.datasets.FC100(root='/home/whbae/active_meta/data',
                                               transform=tv.transforms.ToTensor(),
                                               mode='validation')
-    test_dataset = l2l.vision.datasets.FC100(root='~/data',
+    test_dataset = l2l.vision.datasets.FC100(root='/home/whbae/active_meta/data',
                                               transform=tv.transforms.ToTensor(),
                                              mode='test')
     train_dataset = l2l.data.MetaDataset(train_dataset)
@@ -158,43 +158,45 @@ def main(
             meta_train_error += evaluation_error.item()
             meta_train_accuracy += evaluation_accuracy.item()
 
-            # Compute meta-validation loss
-            learner = head.clone()
-            batch = valid_tasks.sample()
-            evaluation_error, evaluation_accuracy = fast_adapt(batch,
-                                                               learner,
-                                                               features,
-                                                               loss,
-                                                               adapt_steps,
-                                                               shots,
-                                                               ways,
-                                                               device)
-            meta_valid_error += evaluation_error.item()
-            meta_valid_accuracy += evaluation_accuracy.item()
+        if iteration % 100 == 0:
+            for task in range(meta_bsz):
+                # Compute meta-validation loss
+                learner = head.clone()
+                batch = valid_tasks.sample()
+                evaluation_error, evaluation_accuracy = fast_adapt(batch,
+                                                                   learner,
+                                                                   features,
+                                                                   loss,
+                                                                   adapt_steps,
+                                                                   shots,
+                                                                   ways,
+                                                                   device)
+                meta_valid_error += evaluation_error.item()
+                meta_valid_accuracy += evaluation_accuracy.item()
 
-            # Compute meta-testing loss
-            learner = head.clone()
-            batch = test_tasks.sample()
-            evaluation_error, evaluation_accuracy = fast_adapt(batch,
-                                                               learner,
-                                                               features,
-                                                               loss,
-                                                               adapt_steps,
-                                                               shots,
-                                                               ways,
-                                                               device)
-            meta_test_error += evaluation_error.item()
-            meta_test_accuracy += evaluation_accuracy.item()
+            ## Compute meta-testing loss
+                learner = head.clone()
+                batch = test_tasks.sample()
+                evaluation_error, evaluation_accuracy = fast_adapt(batch,
+                                                                   learner,
+                                                                   features,
+                                                                   loss,
+                                                                   adapt_steps,
+                                                                   shots,
+                                                                   ways,
+                                                                   device)
+                meta_test_error += evaluation_error.item()
+                meta_test_accuracy += evaluation_accuracy.item()
 
-        # Print some metrics
-        print('\n')
-        print('Iteration', iteration)
-        print('Meta Train Error', meta_train_error / meta_bsz)
-        print('Meta Train Accuracy', meta_train_accuracy / meta_bsz)
-        print('Meta Valid Error', meta_valid_error / meta_bsz)
-        print('Meta Valid Accuracy', meta_valid_accuracy / meta_bsz)
-        print('Meta Test Error', meta_test_error / meta_bsz)
-        print('Meta Test Accuracy', meta_test_accuracy / meta_bsz)
+            # Print some metrics
+            print('\n')
+            print('Iteration', iteration)
+            print('Meta Train Error', meta_train_error / meta_bsz)
+            print('Meta Train Accuracy', meta_train_accuracy / meta_bsz)
+            print('Meta Valid Error', meta_valid_error / meta_bsz)
+            print('Meta Valid Accuracy', meta_valid_accuracy / meta_bsz)
+            print('Meta Test Error', meta_test_error / meta_bsz)
+            print('Meta Test Accuracy', meta_test_accuracy / meta_bsz)
 
         # Average the accumulated gradients and optimize
         for p in all_parameters:
